@@ -8,10 +8,10 @@ class Packet(abc.ABC):
     def getPacketID(self) -> int:
         pass
 
-    def write(self, dos: "DataOutputStream"):
+    def write(self, dos: DataOutputStream):
         dos.writeInteger(self.getPacketID())
 
-    def read(self, dis: "DataInputStream"):
+    def read(self, dis: DataInputStream):
         pass
 
     def send(self):

@@ -8,6 +8,6 @@ class AuthorizationPacket(Packet):
     def getPacketID(self) -> int:
         return 0x04
 
-    def write(self, dos: "DataOutputStream"):
+    def write(self, dos: DataOutputStream):
         super().write(dos)
         dos.writeString(self.authKey)
