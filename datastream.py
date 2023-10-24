@@ -3,6 +3,7 @@ import struct
 
 
 def readNByte(sock: socket.socket, n: int) -> bytes:
+    if n == 0: return b""
     data = b""
     while not data:
         data = sock.recv(n)
