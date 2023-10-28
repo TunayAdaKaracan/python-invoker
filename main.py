@@ -4,7 +4,7 @@ net.start()
 
 while True:
     cmd = input("> ")
-    if cmd == "siktir": break
+    if cmd == "pause": break
     lis = net.request_blocking(cmd)
     print(lis)
 net.client.close()
