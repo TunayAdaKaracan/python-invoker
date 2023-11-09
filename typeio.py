@@ -69,7 +69,7 @@ class LongTypeIO(TypeIO):
     def fromClass(self, arg: object) -> bool:
         return isinstance(arg, int)
 
-    def read(self, dis: DataInputStream) -> int:
+    def read(self, dis: DataInputStream):
         return dis.readLong()
 
     def write(self, dos: DataOutputStream, arg: int):
@@ -109,18 +109,18 @@ class Types:
     LONG: Type = Type(LongTypeIO(), "L")
     STRING: Type = Type(StringTypeIO(), "S")
 
+    ALL_TYPES = [BYTE, DOUBLE, FLOAT, INTEGER, LONG, STRING]
+
     @staticmethod
     def getTypeFromRepr(repre: str) -> Union[None, Type]:
-        for fieldName in list(filter(lambda x: not x.startswith("__") and not x.endswith("__"), dir(Types))):
-            field: Type = getattr(Types, fieldName)
+        for field in Types.ALL_TYPES:
             if field.repr == repre:
                 return field
         return None
 
     @staticmethod
     def getTypeFromArg(arg: object) -> Union[None, Type]:
-        for fieldName in list(filter(lambda x: not x.startswith("__") and not x.endswith("__"), dir(Types))):
-            field: Type = getattr(Types, fieldName)
+        for field in Types.ALL_TYPES:
             if field.io.fromClass(arg):
                 return field
         return None

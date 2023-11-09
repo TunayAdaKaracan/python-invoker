@@ -1,12 +1,13 @@
 import socket
 import struct
+import uuid
 
 
 def readNByte(sock: socket.socket, n: int) -> bytes:
     if n == 0: return b""
     data = b""
-    while not data:
-        data = sock.recv(n)
+    while len(data) != n:
+        data += sock.recv(n-len(data))
     return data
 
 
@@ -31,7 +32,7 @@ def readFloat(sock: socket.socket) -> float:
 
 
 def readLong(sock: socket.socket) -> int:
-    return struct.unpack(">l", readNByte(sock, 4))[0]
+    return struct.unpack(">q", readNByte(sock, 8))[0]
 
 
 def readUnsignedByte(sock: socket.socket) -> int:
@@ -59,8 +60,12 @@ def readUnsignedLong(sock: socket.socket) -> int:
 
 
 def readString(sock: socket.socket) -> str:
-    strlen = readUnsignedShort(sock)
+    strlen = readInteger(sock)
     return readNByte(sock, strlen).decode("utf-8")
+
+
+def readUUID(sock: socket.socket) -> uuid.UUID:
+    return uuid.UUID(readNByte(sock, 16))
 
 
 def writeBytes(sock: socket.socket, b: bytes):
@@ -88,7 +93,7 @@ def writeFloat(sock: socket.socket, v: float):
 
 
 def writeLong(sock: socket.socket, v: int):
-    writeBytes(sock, struct.pack(">l", v))
+    writeBytes(sock, struct.pack(">q", v))
 
 
 def writeUnsignedByte(sock: socket.socket, v: int):
@@ -116,7 +121,11 @@ def writeUnsignedLong(sock: socket.socket, v: int):
 
 
 def writeString(sock: socket.socket, v: str):
-    writeBytes(sock, struct.pack(">H", len(v)) + v.encode("utf-8"))
+    writeBytes(sock, struct.pack(">i", len(v)) + v.encode("utf-8"))
+
+
+def writeUUID(sock: socket.socket, v: uuid.UUID):
+    writeBytes(sock, v.bytes)
 
 
 class DataStream:
@@ -173,6 +182,9 @@ class DataOutputStream(DataStream):
     def writeString(self, v: str):
         writeString(self.sock, v)
 
+    def writeUUID(self, v: uuid.UUID):
+        writeUUID(self.sock, v)
+
 
 class DataInputStream(DataStream):
     def __init__(self, sock: socket.socket):
@@ -219,3 +231,6 @@ class DataInputStream(DataStream):
 
     def readString(self) -> str:
         return readString(self.sock)
+  
+    def readUUID(self) -> uuid.UUID:
+        return readUUID(self.sock)
