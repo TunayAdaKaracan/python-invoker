@@ -1,10 +1,15 @@
+import time
+import sys
 from network import *
-net = Network("localhost", 8080, "kutup is awesomez")
-net.start()
 
-while True:
-    cmd = input("> ")
-    if cmd == "pause": break
-    lis = net.request_blocking(cmd)
-    print(lis)
+net = Network("localhost", 8080, "kutup is awesome")
+
+
+@net.packet_event(InformationPacket)
+def a(net, pack):
+    print("I am client: "+pack.client_id)
+
+
+net.start()
+input("> ")
 net.client.close()

@@ -69,11 +69,10 @@ class PacketReader:
                 if packet is not None:
                     packet.read(self.dis)
                     self.__net._event_registry.fireEvent(self.__net, packetID, packet)
-            except InterruptedError as e:
-                self.__net.reconnect()
-                Printer.print("Err ")
-                Printer.print(e)
-                continue
+            except Exception as e:
+                if not self.__net.isRunning:
+                    self.__net.reconnect()
+                return
 
 
 class PacketSender:
@@ -95,8 +94,7 @@ class PacketSender:
                 Printer.print("sending packet "+str(packet))
                 dos: DataOutputStream = DataOutputStream(self.__net.client)
                 packet.write(dos)
-            except InterruptedError:
-                self.__net.reconnect()
+            except Exception as e:
                 return
 
 
@@ -129,6 +127,8 @@ class Network:
         self._event_registry._register(EventRegistry.findIDFromClass(RouteResponsePacket), self.route_response_packet)
         self._event_registry._register(EventRegistry.findIDFromClass(ServerRejectedClientPacket), self.client_rejected)
         self._event_registry._register(EventRegistry.findIDFromClass(RouteInvokeErrorPacket), self.route_error)
+
+        self.wait_event = threading.Event()
 
     @property
     def isRunning(self) -> bool:
@@ -164,17 +164,25 @@ class Network:
     def sendPacket(self, packet: Packet):
         self.__packet_sender.addPacket(packet)
 
-    def request(self, route_name: str, callback: callable, *args):
+    def wait_until_ready(self):
+        self.wait_event.wait()
+
+    def request(self, route_name: str, callback: callable, *args, **kwargs):
+        explict_long = kwargs.get("explict_long", [])
+        explict_double = kwargs.get("explict_double", [])
+
         random_uuid = uuid.uuid4()
         requestPacket: RouteRequestPacket = RouteRequestPacket()
         requestPacket.uuid = random_uuid
         requestPacket.route_name = route_name
         requestPacket.args = list(args)
+        requestPacket.explict_long = explict_long
+        requestPacket.explict_double = explict_double
         self.sendPacket(requestPacket)
         self.__callbacks[str(random_uuid)] = callback
         self.__request_counter += 1
 
-    def request_blocking(self, route_name: str, *args):
+    def request_blocking(self, route_name: str, *args, **kwargs):
         ret_val = None
         event = threading.Event()
 
@@ -183,8 +191,7 @@ class Network:
             ret_val = value
             event.set()
 
-        self.request(route_name, internal_call, *args)
-
+        self.request(route_name, internal_call, *args, **kwargs)
         event.wait()
         return ret_val
 
@@ -205,6 +212,7 @@ class Network:
             if EventRegistry.findIDFromClass(packet_class) is None:
                 raise RuntimeError("There is no such a packet")
             self._event_registry._register(EventRegistry.findIDFromClass(packet_class), func)
+
             def wrapper(*args, **kwargs):
                 func(*args, **kwargs)
 
@@ -216,6 +224,7 @@ class Network:
 
     def information_handler(self, net, packet: InformationPacket):
         self.client_id = packet.client_id
+        self.wait_event.set()
 
     def route_not_found(self, net, packet: RouteNotFoundPacket):
         raise RuntimeError("No route found. Request ID: "+str(packet.route_id) +" Route Name:"+packet.route_name)

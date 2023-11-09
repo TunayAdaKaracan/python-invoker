@@ -29,7 +29,7 @@ class ClientConnectPacket(Packet):
         return 0x01
 
     def read(self, dis: DataInputStream):
-        self.client_id = uuid.UUID(dis.readString())
+        self.client_id = dis.readString()
 
 
 class ClientDisconnectPacket(Packet):
@@ -40,7 +40,7 @@ class ClientDisconnectPacket(Packet):
         return 0x02
 
     def read(self, dis: DataInputStream):
-        self.client_id = uuid.UUID(dis.readString())
+        self.client_id = dis.readString()
 
 
 class InformationPacket(Packet):
@@ -51,8 +51,7 @@ class InformationPacket(Packet):
         return 0x08
 
     def read(self, dis: DataInputStream):
-        self.client_id = uuid.UUID(dis.readString())
-
+        self.client_id = dis.readString()
 
 class RouteNotFoundPacket(Packet):
     def __init__(self):
@@ -63,7 +62,7 @@ class RouteNotFoundPacket(Packet):
         return 0x07
 
     def read(self, dis: DataInputStream):
-        self.route_id = uuid.UUID(dis.readString())
+        self.route_id = dis.readUUID()
         self.route_name = dis.readString()
 
 
@@ -77,7 +76,7 @@ class RouteInvokeErrorPacket(Packet):
         return 0x0B
 
     def read(self, dis: DataInputStream):
-        self.route_id = uuid.UUID(dis.readString())
+        self.route_id = dis.readUUID()
         self.route_name = dis.readString()
         self.error_message = dis.readString()
 
@@ -92,7 +91,7 @@ class RouteResponsePacket(Packet):
         return 0x06
 
     def read(self, dis: DataInputStream):
-        self.response_id = uuid.UUID(dis.readString())
+        self.response_id = dis.readUUID()
         self.route_name = dis.readString()
 
         argTypeStr: str = dis.readString()
@@ -123,21 +122,27 @@ class RouteRequestPacket(Packet):
         self.uuid = None
         self.route_name = None
         self.args = []
+        self.explict_long = []
+        self.explict_double = []
 
     def getPacketID(self) -> int:
         return 0x05
 
     def write(self, dos: DataOutputStream):
         super().write(dos)
-        dos.writeString(str(self.uuid))
+        dos.writeUUID(self.uuid)
         dos.writeString(self.route_name)
         self.__parse_arguments(dos)
 
     def __parse_arguments(self, dos: DataOutputStream):
         types = ""
         sendData = []
-        for arg in self.args:
+        for index, arg in enumerate(self.args):
             argType = Types.getTypeFromArg(arg)
+            if index in self.explict_long:
+                argType = Types.LONG
+            elif index in self.explict_double:
+                argType = Types.DOUBLE
             assert argType is not None  # TODO: Error handling
             types += argType.repr
             sendData.append((arg, argType))
